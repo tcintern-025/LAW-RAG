@@ -1,0 +1,51 @@
+SOURCE: Prevention of Electronic Crimes Act (PECA), 2016 — Sample/Demo Excerpts
+NOTE: This file contains condensed, plain-language summaries of selected sections for
+demonstration purposes only. Replace this file with the official, complete text of PECA
+(and any amendments) before using this system for any real legal work.
+
+SECTION 3 — Unauthorized access to information system or data
+Whoever gains unauthorized access to any information system or data is punished with
+imprisonment which may extend to three months, or with fine which may extend to fifty
+thousand rupees, or with both.
+
+SECTION 4 — Unauthorized copying or transmission of data
+Whoever, with dishonest intention, copies or otherwise transmits data without authorization
+is punished with imprisonment which may extend to six months, or with fine which may extend
+to one hundred thousand rupees, or with both.
+
+SECTION 10-A — Cyber terrorism
+An act committed with the intent to glorify an offence relating to terrorism, or any person
+convicted of such an offence, through an information system, is treated as cyber terrorism
+and is punishable under the Act with the most severe penalties it provides, including
+imprisonment for life in aggravated circumstances.
+
+SECTION 11 — Hate speech
+A person who prepares or disseminates information, through any information system, that
+advances or is likely to advance interfaith, sectarian, or racial hatred is punished with
+imprisonment which may extend to seven years, or with fine, or with both.
+
+SECTION 20 — Offences against dignity of a natural person
+Whoever intentionally and publicly exhibits or displays or transmits information through
+an information system that harms the reputation or dignity of a natural person, or amounts
+to violation of privacy, is punished with imprisonment which may extend to three years, or
+with fine which may extend to one million rupees, or with both.
+
+SECTION 21 — Offences against modesty of a natural person and minor
+Whoever intentionally and publicly displays, distributes, or transmits information that
+superimposes a photograph or video of a person's face onto sexually explicit content, or
+otherwise intimidates or harasses a person through an information system with sexual
+content, is punished with imprisonment which may extend to five years, or with fine which
+may extend to five million rupees, or with both; enhanced penalties apply where the victim
+is a minor.
+
+SECTION 24 — Cyberstalking
+A person commits the offence of cyberstalking who, with the intent to coerce, intimidate,
+or harass, follows another person, contacts them, or watches or spies on them through an
+information system in a manner that causes fear or distress. Punishment may extend to
+imprisonment of three years, or fine, or both, with enhanced penalties where the victim is
+a minor.
+
+SECTION 37 — Unlawful online content
+The Pakistan Telecommunication Authority is empowered to remove or block access to any
+online content it considers to be unlawful, including content that is against the glory
+of Islam, the security of Pakistan, public order, decency or morality, or contempt of court.

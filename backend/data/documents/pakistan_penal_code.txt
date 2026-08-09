@@ -1,0 +1,52 @@
+SOURCE: Pakistan Penal Code, 1860 (Act XLV of 1860) — Sample/Demo Excerpts
+NOTE: This file contains condensed, plain-language summaries of selected sections for
+demonstration purposes only. Replace this file with the official, complete text of the
+Pakistan Penal Code before using this system for any real legal work.
+
+SECTION 299 — Definitions
+Defines key terms used throughout the Code, including "culpable homicide," "death,"
+"hurt," and "wrongful act," which form the basis for later offence definitions.
+
+SECTION 302 — Punishment of Qatl-i-Amd (intentional murder)
+Whoever commits murder is punished, subject to the provisions of the Code, with death as
+qisas, or with death or imprisonment for life as ta'zir, having regard to the facts and
+circumstances of the case, and may also be liable to a fine.
+
+SECTION 320 — Qatl-i-khata (causing death by mistake)
+Where death is caused by a mistake of act or of intention, or both, the offence is treated
+as qatl-i-khata, punishable in accordance with the provisions relating to diyat (compensation)
+under the Code.
+
+SECTION 375 — Rape
+Defines the offence of rape, including the circumstances under which sexual intercourse by
+a man with a woman is considered to be against her will, without her consent, or otherwise
+unlawful under the conditions set out in the section.
+
+SECTION 379 — Punishment for theft
+Whoever commits theft is punished with imprisonment of either description for a term which
+may extend to three years, or with fine, or with both.
+
+SECTION 392 — Punishment for robbery
+Whoever commits robbery is punished with rigorous imprisonment for a term which may extend
+to ten years, and is also liable to fine; if the robbery is committed on the highway between
+sunset and sunrise, the imprisonment may extend to fourteen years.
+
+SECTION 406 — Punishment for criminal breach of trust
+Whoever commits criminal breach of trust is punished with imprisonment of either description
+for a term which may extend to three years, or with fine, or with both.
+
+SECTION 420 — Cheating and dishonestly inducing delivery of property
+Whoever cheats and thereby dishonestly induces the person deceived to deliver any property,
+or to make, alter, or destroy any valuable security, is punished with imprisonment of either
+description for a term which may extend to seven years, and is also liable to fine.
+
+SECTION 495 — Marrying again during the lifetime of a husband or wife
+Whoever, having a spouse living, marries again without lawful authority for doing so, and
+conceals from the person with whom the subsequent marriage is contracted the fact of the
+former marriage, is punished with imprisonment which may extend to ten years, and is also
+liable to fine.
+
+SECTION 506 — Punishment for criminal intimidation
+Whoever commits criminal intimidation is punished with imprisonment of either description
+for a term which may extend to two years, or with fine, or with both; if the threat is to
+cause death or grievous hurt, the punishment may extend to seven years.
