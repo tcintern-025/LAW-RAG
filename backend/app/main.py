@@ -4,8 +4,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.schemas import AskRequest, AskResponse, HealthResponse, SourceDocument
+from app.schemas import AskRequest, AskResponse, HealthResponse, SourceDocument, AgentAskRequest, AgentAskResponse
 from app.rag.chain import answer_question
+from app.agent.graph import run_agent
 from app.retrieval.vectorstore import get_vectorstore, collection_is_empty
 
 app = FastAPI(
@@ -64,3 +65,18 @@ def ask(request: AskRequest) -> AskResponse:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return AskResponse(**result)
+
+
+@app.post("/agent/ask", response_model=AgentAskResponse)
+def agent_ask(request: AgentAskRequest) -> AgentAskResponse:
+    """Tool-calling agent endpoint. Unlike /ask, this doesn't always search
+    the documents — it decides whether a tool is needed at all (legal
+    search, calculator, or date), calls it if so, and returns the final
+    answer along with which tool(s) it used.
+    """
+    try:
+        result = run_agent(request.question)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return AgentAskResponse(**result)

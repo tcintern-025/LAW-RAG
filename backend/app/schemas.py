@@ -28,6 +28,17 @@ class HealthResponse(BaseModel):
     document_count: int
 
 
+class AgentAskRequest(BaseModel):
+    question: str = Field(
+        ..., min_length=3, max_length=2000, description="The user's question."
+    )
+
+
+class AgentAskResponse(BaseModel):
+    answer: str
+    tools_used: list[str]
+
+
 class SourceDocument(BaseModel):
     name: str
     chunk_count: int

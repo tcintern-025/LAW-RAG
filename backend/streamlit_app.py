@@ -32,6 +32,10 @@ from app.config import settings  # noqa: E402
 from app.retrieval.vectorstore import collection_is_empty  # noqa: E402
 from app.ingestion.build_index import build_index  # noqa: E402
 from app.rag.chain import answer_question  # noqa: E402
+from app.agent.graph import run_agent  # noqa: E402
+
+CONTACT_EMAIL = "buildnexdigital@gmail.com"
+LINKEDIN_URL = "https://www.linkedin.com/in/kashaf-junaid-1b84b331b/"
 
 st.set_page_config(
     page_title=settings.PRODUCT_NAME,
@@ -52,38 +56,176 @@ def ensure_index_built():
 
 
 # ---------------------------------------------------------------------------
-# Styling — same ink/emerald/brass identity as the React frontend.
+# Styling — "letterhead" identity: navy, gold, cream, serif headings.
+# This is deliberately closer to a law firm's own site than a typical
+# dark-mode AI-product look, since that's the visual language this
+# specific audience (US law firms) already trusts.
 # ---------------------------------------------------------------------------
 st.markdown(
     """
     <style>
-    .stApp { background-color: #14171C; }
+    .stApp { background-color: #0B1F3A; }
+
+    /* Sidebar — explicit background + forced text color so it never
+       silently falls back to a light default that clashes with cream text. */
+    section[data-testid="stSidebar"] {
+        background-color: #0A1628;
+        border-right: 1px solid #23324A;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #E7E3D8 !important;
+    }
+    section[data-testid="stSidebar"] hr {
+        border-color: #23324A;
+    }
+    section[data-testid="stSidebar"] a {
+        border: 1px solid #D4AF37 !important;
+        color: #F2C94C !important;
+        background: transparent !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+
+    .sidebar-brand h3 {
+        font-family: Georgia, 'Times New Roman', serif;
+        color: #F2C94C !important;
+        letter-spacing: 0.3px;
+        margin-bottom: 4px;
+    }
+    .sidebar-brand p {
+        color: #9FADC2 !important;
+        font-size: 0.85rem;
+        line-height: 1.6;
+    }
+
+    /* Letterhead header — short accent rule instead of a stark full-width line */
+    .letterhead { padding-bottom: 6px; margin-bottom: 12px; }
+    .letterhead h1 {
+        font-family: Georgia, 'Times New Roman', serif;
+        color: #F5F1E6;
+        margin-bottom: 6px;
+    }
+    .letterhead p {
+        color: #93A0B4;
+        font-size: 0.95rem;
+        margin: 0 0 14px 0;
+    }
+    .letterhead .rule {
+        width: 64px;
+        height: 3px;
+        background: linear-gradient(90deg, #D4AF37, #F2C94C);
+        border-radius: 2px;
+    }
+
     .exhibit-tag {
         display: inline-block;
-        border: 1px solid rgba(176, 141, 87, 0.4);
-        background: rgba(176, 141, 87, 0.1);
-        color: #C9A876;
-        font-family: monospace;
+        border: 1px solid #D4AF37;
+        background: rgba(212, 175, 55, 0.12);
+        color: #F2C94C;
+        font-family: 'Courier New', monospace;
         font-size: 0.7rem;
-        padding: 2px 8px;
+        padding: 2px 9px;
         border-radius: 4px;
         margin-right: 8px;
     }
     .disclaimer-text {
         font-size: 0.78rem;
         font-style: italic;
-        color: rgba(233, 230, 222, 0.45);
-        border-top: 1px solid #333A47;
+        color: #7C8AA0;
+        border-top: 1px solid #1E2C42;
         padding-top: 8px;
-        margin-top: 10px;
+        margin-top: 12px;
+    }
+
+    /* Chat bubbles — actual cards instead of flat background text */
+    [data-testid="stChatMessage"] {
+        background-color: #101E33;
+        border: 1px solid #1E2C42;
+        border-radius: 12px;
+        padding: 6px 8px;
+    }
+    [data-testid="stChatInput"] {
+        background-color: #101E33;
+        border-radius: 14px;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.title(f"⚖️ {settings.PRODUCT_NAME}")
-st.caption(settings.PRODUCT_TAGLINE)
+# ---------------------------------------------------------------------------
+# Header ("letterhead")
+# ---------------------------------------------------------------------------
+st.markdown(
+    f"""
+    <div class="letterhead">
+        <h1>⚖️ {settings.PRODUCT_NAME}</h1>
+        <p>{settings.PRODUCT_TAGLINE}</p>
+        <div class="rule"></div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ---------------------------------------------------------------------------
+# Sidebar — value proposition + contact CTA. This is what turns a demo
+# into a lead: anyone who likes what they see has an immediate, obvious
+# way to get in touch about getting this built for their own firm.
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    st.markdown(
+        """
+        <div class="sidebar-brand">
+            <h3>BUILDNEX Digital</h3>
+            <p>Custom AI-powered document assistants for law firms and
+            professional service businesses.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+
+    st.markdown("**What this demo shows**")
+    st.markdown(
+        "- Answers are grounded strictly in the documents provided — "
+        "no fabricated case law or statutes\n"
+        "- Every answer names its source document and section\n"
+        "- Built on your firm's own filings, contracts, or research memos, "
+        "not generic internet text"
+    )
+
+    st.markdown("---")
+
+    st.markdown("**Mode**")
+    mode = st.radio(
+        "Mode",
+        ["Grounded RAG", "Agent (RAG + tools)"],
+        label_visibility="collapsed",
+        help=(
+            "Grounded RAG always searches the documents. Agent mode first "
+            "decides whether a tool is needed at all — legal search, a "
+            "calculator, or today's date — before answering."
+        ),
+    )
+
+    st.markdown("---")
+
+    st.markdown("**Want this built for your firm's own documents?**")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.link_button(
+            "Email",
+            f"mailto:{CONTACT_EMAIL}?subject=Custom%20Legal%20AI%20Assistant%20Inquiry",
+            use_container_width=True,
+        )
+    with col2:
+        st.link_button(
+            "LinkedIn",
+            LINKEDIN_URL,
+            use_container_width=True,
+        )
+    st.caption(CONTACT_EMAIL)
 
 if not settings.GROQ_API_KEY:
     st.error(
@@ -106,7 +248,21 @@ LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
-        if msg["role"] == "assistant" and msg.get("sources"):
+        if msg["role"] == "assistant" and msg.get("tools_used") is not None:
+            if msg["tools_used"]:
+                tool_badges = " ".join(
+                    f'<span class="exhibit-tag">{t}</span>' for t in msg["tools_used"]
+                )
+                st.markdown(
+                    f'<div style="margin-top:8px;">'
+                    f'<span style="color:#7C8AA0;font-size:11px;'
+                    f'text-transform:uppercase;margin-right:8px;">'
+                    f'Tools used:</span>{tool_badges}</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.caption("No tool was needed for this question.")
+        elif msg["role"] == "assistant" and msg.get("sources"):
             with st.expander(f"Referenced excerpts ({len(msg['sources'])})"):
                 for i, src in enumerate(msg["sources"]):
                     label = f"Exhibit {LETTERS[i] if i < 26 else i + 1}"
@@ -138,39 +294,66 @@ if question:
     with st.chat_message("assistant"):
         with st.spinner("Thinking…"):
             try:
-                result = answer_question(question)
-                st.write(result["answer"])
+                if mode == "Agent (RAG + tools)":
+                    agent_result = run_agent(question)
+                    st.write(agent_result["answer"])
 
-                if result["sources"]:
-                    with st.expander(f"Referenced excerpts ({len(result['sources'])})"):
-                        for i, src in enumerate(result["sources"]):
-                            label = f"Exhibit {LETTERS[i] if i < 26 else i + 1}"
-                            page = (
-                                f", p.{src['page'] + 1}"
-                                if src.get("page") is not None
-                                else ""
-                            )
-                            st.markdown(
-                                f'<span class="exhibit-tag">{label}</span>'
-                                f"**{src['source']}**{page}",
-                                unsafe_allow_html=True,
-                            )
-                            st.text(src["excerpt"])
-                            st.divider()
+                    if agent_result["tools_used"]:
+                        tool_badges = " ".join(
+                            f'<span class="exhibit-tag">{t}</span>'
+                            for t in agent_result["tools_used"]
+                        )
+                        st.markdown(
+                            f'<div style="margin-top:8px;">'
+                            f'<span style="color:#7C8AA0;font-size:11px;'
+                            f'text-transform:uppercase;margin-right:8px;">'
+                            f'Tools used:</span>{tool_badges}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.caption("No tool was needed for this question.")
 
-                st.markdown(
-                    f'<div class="disclaimer-text">{result["disclaimer"]}</div>',
-                    unsafe_allow_html=True,
-                )
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": agent_result["answer"],
+                            "tools_used": agent_result["tools_used"],
+                        }
+                    )
+                else:
+                    result = answer_question(question)
+                    st.write(result["answer"])
 
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": result["answer"],
-                        "sources": result["sources"],
-                        "disclaimer": result["disclaimer"],
-                    }
-                )
+                    if result["sources"]:
+                        with st.expander(f"Referenced excerpts ({len(result['sources'])})"):
+                            for i, src in enumerate(result["sources"]):
+                                label = f"Exhibit {LETTERS[i] if i < 26 else i + 1}"
+                                page = (
+                                    f", p.{src['page'] + 1}"
+                                    if src.get("page") is not None
+                                    else ""
+                                )
+                                st.markdown(
+                                    f'<span class="exhibit-tag">{label}</span>'
+                                    f"**{src['source']}**{page}",
+                                    unsafe_allow_html=True,
+                                )
+                                st.text(src["excerpt"])
+                                st.divider()
+
+                    st.markdown(
+                        f'<div class="disclaimer-text">{result["disclaimer"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": result["answer"],
+                            "sources": result["sources"],
+                            "disclaimer": result["disclaimer"],
+                        }
+                    )
             except Exception as exc:  # noqa: BLE001
                 error_text = f"Something went wrong: {exc}"
                 st.error(error_text)
