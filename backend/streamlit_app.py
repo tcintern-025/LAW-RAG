@@ -18,6 +18,16 @@ import os
 
 import streamlit as st
 
+# set_page_config MUST be the very first Streamlit command that runs.
+# Touching st.secrets below can itself render a "no secrets found" warning
+# in some environments, which would count as an earlier Streamlit command
+# and break this rule -- so this has to come before that block.
+st.set_page_config(
+    page_title="Pakistan Law Assistant",
+    page_icon="⚖️",
+    layout="centered",
+)
+
 # Bridge Streamlit Cloud's secrets manager into environment variables, so
 # app/config.py (which reads everything via os.getenv) works identically
 # whether it's running locally off .env or deployed off Streamlit secrets.
@@ -36,12 +46,6 @@ from app.agent.graph import run_agent  # noqa: E402
 
 CONTACT_EMAIL = "buildnexdigital@gmail.com"
 LINKEDIN_URL = "https://www.linkedin.com/in/kashaf-junaid-1b84b331b/"
-
-st.set_page_config(
-    page_title=settings.PRODUCT_NAME,
-    page_icon="⚖️",
-    layout="centered",
-)
 
 # ---------------------------------------------------------------------------
 # One-time setup: build the index automatically if it's empty. This is what

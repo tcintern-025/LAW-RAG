@@ -10,7 +10,7 @@ langchain-text-splitters==0.3.5
 langchain-chroma==0.2.0
 langchain-huggingface==0.1.2
 langchain-groq==0.2.3
-langgraph==1.2.10
+langgraph==0.2.62
 
 chromadb==0.5.23
 sentence-transformers==3.3.1

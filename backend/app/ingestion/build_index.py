@@ -17,6 +17,7 @@ from app.config import settings
 from app.ingestion.loader import load_documents
 from app.ingestion.splitter import split_documents
 from app.retrieval.vectorstore import get_vectorstore
+from langchain_community.vectorstores.utils import filter_complex_metadata
 
 
 def build_index() -> None:
@@ -45,6 +46,10 @@ def build_index() -> None:
         store.delete(ids=existing_ids)
         print(f"[ingest] cleared {len(existing_ids)} existing chunk(s) "
               f"from collection '{settings.CLIENT_ID}'")
+
+    # Chroma rejects metadata values of None (e.g. the 'page' field on
+    # non-PDF documents), so strip anything it can't store before writing.
+    chunks = filter_complex_metadata(chunks)
 
     ids = [chunk.metadata["chunk_id"] for chunk in chunks]
     store.add_documents(documents=chunks, ids=ids)
