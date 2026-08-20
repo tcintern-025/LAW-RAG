@@ -15,6 +15,7 @@ at this file. See README.md for the full walkthrough.
 """
 
 import os
+import uuid
 
 import streamlit as st
 
@@ -132,6 +133,17 @@ st.markdown(
         border-radius: 4px;
         margin-right: 8px;
     }
+    .trace-tag {
+        display: inline-block;
+        border: 1px solid #3A4C6B;
+        background: rgba(58, 76, 107, 0.25);
+        color: #9FADC2;
+        font-family: 'Courier New', monospace;
+        font-size: 0.68rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-right: 4px;
+    }
     .disclaimer-text {
         font-size: 0.78rem;
         font-style: italic;
@@ -207,11 +219,23 @@ with st.sidebar:
         ["Grounded RAG", "Agent (RAG + tools)"],
         label_visibility="collapsed",
         help=(
-            "Grounded RAG always searches the documents. Agent mode first "
-            "decides whether a tool is needed at all — legal search, a "
-            "calculator, or today's date — before answering."
+            "Grounded RAG always searches the documents. Agent mode is a "
+            "multi-step LangGraph workflow: it decides whether a tool is "
+            "needed at all — legal search, a calculator, or today's date — "
+            "can chain more than one tool per turn, and remembers earlier "
+            "turns in this chat session."
         ),
     )
+
+    if mode == "Agent (RAG + tools)":
+        if st.button("Start new agent conversation", use_container_width=True):
+            st.session_state.agent_thread_id = str(uuid.uuid4())
+            st.session_state.messages = []
+            st.rerun()
+        st.caption(
+            "The agent remembers this session's earlier turns. Use this "
+            "button to reset that memory and start fresh."
+        )
 
     st.markdown("---")
 
@@ -247,7 +271,28 @@ with st.spinner("Preparing the document index…"):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# One thread_id per browser session, reused across every agent-mode turn so
+# the LangGraph checkpointer gives the agent real conversation memory (e.g.
+# "explain that in simple words" resolving against the prior answer). Reset
+# via the sidebar button above.
+if "agent_thread_id" not in st.session_state:
+    st.session_state.agent_thread_id = str(uuid.uuid4())
+
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def render_trace(trace):
+    if not trace:
+        return
+    badges = " ".join(f'<span class="trace-tag">{step}</span>' for step in trace)
+    st.markdown(
+        f'<div style="margin-top:4px;">'
+        f'<span style="color:#5C6B85;font-size:10px;'
+        f'text-transform:uppercase;margin-right:8px;">'
+        f"Execution path:</span>{badges}</div>",
+        unsafe_allow_html=True,
+    )
+
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -266,6 +311,9 @@ for msg in st.session_state.messages:
                 )
             else:
                 st.caption("No tool was needed for this question.")
+            render_trace(msg.get("execution_trace"))
+            if msg.get("error"):
+                st.caption(f"⚠️ A tool had trouble on this turn: {msg['error']}")
         elif msg["role"] == "assistant" and msg.get("sources"):
             with st.expander(f"Referenced excerpts ({len(msg['sources'])})"):
                 for i, src in enumerate(msg["sources"]):
@@ -299,7 +347,9 @@ if question:
         with st.spinner("Thinking…"):
             try:
                 if mode == "Agent (RAG + tools)":
-                    agent_result = run_agent(question)
+                    agent_result = run_agent(
+                        question, thread_id=st.session_state.agent_thread_id
+                    )
                     st.write(agent_result["answer"])
 
                     if agent_result["tools_used"]:
@@ -317,11 +367,20 @@ if question:
                     else:
                         st.caption("No tool was needed for this question.")
 
+                    render_trace(agent_result.get("execution_trace"))
+
+                    if agent_result.get("error"):
+                        st.caption(
+                            f"⚠️ A tool had trouble on this turn: {agent_result['error']}"
+                        )
+
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
                             "content": agent_result["answer"],
                             "tools_used": agent_result["tools_used"],
+                            "execution_trace": agent_result.get("execution_trace"),
+                            "error": agent_result.get("error"),
                         }
                     )
                 else:

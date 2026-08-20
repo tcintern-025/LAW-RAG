@@ -12,6 +12,11 @@ langchain-huggingface==0.1.2
 langchain-groq==0.2.3
 langgraph==0.2.62
 
+# Optional — only used if LANGCHAIN_TRACING_V2=true in .env. LangChain/
+# LangGraph pick this up automatically once installed; no code changes
+# needed to enable/disable tracing.
+langsmith==0.2.10
+
 chromadb==0.5.23
 sentence-transformers==3.3.1
 

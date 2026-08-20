@@ -69,13 +69,15 @@ def ask(request: AskRequest) -> AskResponse:
 
 @app.post("/agent/ask", response_model=AgentAskResponse)
 def agent_ask(request: AgentAskRequest) -> AgentAskResponse:
-    """Tool-calling agent endpoint. Unlike /ask, this doesn't always search
-    the documents — it decides whether a tool is needed at all (legal
-    search, calculator, or date), calls it if so, and returns the final
-    answer along with which tool(s) it used.
+    """Tool-calling, multi-step agent endpoint (LangGraph StateGraph). Unlike
+    /ask, this doesn't always search the documents — it decides whether a
+    tool is needed at all (legal search, calculator, or date), can chain
+    multiple tools in sequence within one turn, and remembers prior turns
+    of the same conversation when the caller passes back `thread_id` from
+    a previous response.
     """
     try:
-        result = run_agent(request.question)
+        result = run_agent(request.question, thread_id=request.thread_id)
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
