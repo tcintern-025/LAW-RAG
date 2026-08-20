@@ -7,6 +7,15 @@ is genuinely free, and doesn't require a credit card. It reuses the exact
 same RAG pipeline (app.ingestion, app.retrieval, app.rag) as the FastAPI
 version — nothing about the actual RAG logic is duplicated or different.
 
+Conversation memory (Agent mode only): each Streamlit session gets its own
+thread_id, generated once and kept in st.session_state so page reruns
+(every interaction reruns the whole script) don't lose it or swap threads.
+The actual memory lives in the agent's SQLite checkpointer on disk, keyed
+by that thread_id — st.session_state only remembers *which* thread this
+browser tab is currently on, not the conversation itself. That's what lets
+"New conversation" and "Reset" work without risking any other session's
+history.
+
 Run locally:
     streamlit run streamlit_app.py
 
@@ -43,7 +52,7 @@ from app.config import settings  # noqa: E402
 from app.retrieval.vectorstore import collection_is_empty  # noqa: E402
 from app.ingestion.build_index import build_index  # noqa: E402
 from app.rag.chain import answer_question  # noqa: E402
-from app.agent.graph import run_agent  # noqa: E402
+from app.agent.graph import run_agent, reset_conversation  # noqa: E402
 
 CONTACT_EMAIL = "buildnexdigital@gmail.com"
 LINKEDIN_URL = "https://www.linkedin.com/in/kashaf-junaid-1b84b331b/"
@@ -133,17 +142,6 @@ st.markdown(
         border-radius: 4px;
         margin-right: 8px;
     }
-    .trace-tag {
-        display: inline-block;
-        border: 1px solid #3A4C6B;
-        background: rgba(58, 76, 107, 0.25);
-        color: #9FADC2;
-        font-family: 'Courier New', monospace;
-        font-size: 0.68rem;
-        padding: 2px 8px;
-        border-radius: 4px;
-        margin-right: 4px;
-    }
     .disclaimer-text {
         font-size: 0.78rem;
         font-style: italic;
@@ -151,6 +149,16 @@ st.markdown(
         border-top: 1px solid #1E2C42;
         padding-top: 8px;
         margin-top: 12px;
+    }
+    .thread-tag {
+        display: inline-block;
+        font-family: 'Courier New', monospace;
+        font-size: 0.72rem;
+        color: #7C8AA0;
+        background: rgba(124, 138, 160, 0.12);
+        border: 1px solid #23324A;
+        border-radius: 6px;
+        padding: 3px 8px;
     }
 
     /* Chat bubbles — actual cards instead of flat background text */
@@ -182,6 +190,31 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# ---------------------------------------------------------------------------
+# Conversation identity — this thread_id is the whole memory mechanism.
+# Generated once per browser session (Streamlit reruns the script on every
+# interaction, so this must live in session_state, not a bare variable, or
+# it would mint a new thread_id — and lose memory — on every single click).
+# ---------------------------------------------------------------------------
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
+def _start_new_conversation():
+    st.session_state.thread_id = str(uuid.uuid4())
+    st.session_state.messages = []
+
+
+def _reset_current_conversation():
+    # Clears the checkpointer's stored history for this thread_id only —
+    # every other session's thread_id is untouched. Keep the same
+    # thread_id afterward so a fresh conversation continues under it.
+    reset_conversation(st.session_state.thread_id)
+    st.session_state.messages = []
+
 
 # ---------------------------------------------------------------------------
 # Sidebar — value proposition + contact CTA. This is what turns a demo
@@ -219,23 +252,36 @@ with st.sidebar:
         ["Grounded RAG", "Agent (RAG + tools)"],
         label_visibility="collapsed",
         help=(
-            "Grounded RAG always searches the documents. Agent mode is a "
-            "multi-step LangGraph workflow: it decides whether a tool is "
-            "needed at all — legal search, a calculator, or today's date — "
-            "can chain more than one tool per turn, and remembers earlier "
-            "turns in this chat session."
+            "Grounded RAG always searches the documents, one question at a "
+            "time. Agent mode first decides whether a tool is needed at all "
+            "— legal search, a calculator, or today's date — and remembers "
+            "this conversation, so follow-up questions like 'explain that "
+            "more simply' work."
         ),
     )
 
     if mode == "Agent (RAG + tools)":
-        if st.button("Start new agent conversation", use_container_width=True):
-            st.session_state.agent_thread_id = str(uuid.uuid4())
-            st.session_state.messages = []
-            st.rerun()
-        st.caption(
-            "The agent remembers this session's earlier turns. Use this "
-            "button to reset that memory and start fresh."
+        st.markdown("---")
+        st.markdown("**Conversation**")
+        st.markdown(
+            f'<span class="thread-tag">thread: {st.session_state.thread_id[:8]}…</span>',
+            unsafe_allow_html=True,
         )
+        col1, col2 = st.columns(2)
+        with col1:
+            st.button(
+                "New conversation",
+                use_container_width=True,
+                on_click=_start_new_conversation,
+                help="Starts a brand new, isolated thread — this one's history stays saved under its old thread_id.",
+            )
+        with col2:
+            st.button(
+                "Reset",
+                use_container_width=True,
+                on_click=_reset_current_conversation,
+                help="Clears this conversation's memory. Only this thread is affected.",
+            )
 
     st.markdown("---")
 
@@ -268,31 +314,7 @@ with st.spinner("Preparing the document index…"):
 # ---------------------------------------------------------------------------
 # Chat state
 # ---------------------------------------------------------------------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# One thread_id per browser session, reused across every agent-mode turn so
-# the LangGraph checkpointer gives the agent real conversation memory (e.g.
-# "explain that in simple words" resolving against the prior answer). Reset
-# via the sidebar button above.
-if "agent_thread_id" not in st.session_state:
-    st.session_state.agent_thread_id = str(uuid.uuid4())
-
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-
-def render_trace(trace):
-    if not trace:
-        return
-    badges = " ".join(f'<span class="trace-tag">{step}</span>' for step in trace)
-    st.markdown(
-        f'<div style="margin-top:4px;">'
-        f'<span style="color:#5C6B85;font-size:10px;'
-        f'text-transform:uppercase;margin-right:8px;">'
-        f"Execution path:</span>{badges}</div>",
-        unsafe_allow_html=True,
-    )
-
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -311,9 +333,6 @@ for msg in st.session_state.messages:
                 )
             else:
                 st.caption("No tool was needed for this question.")
-            render_trace(msg.get("execution_trace"))
-            if msg.get("error"):
-                st.caption(f"⚠️ A tool had trouble on this turn: {msg['error']}")
         elif msg["role"] == "assistant" and msg.get("sources"):
             with st.expander(f"Referenced excerpts ({len(msg['sources'])})"):
                 for i, src in enumerate(msg["sources"]):
@@ -348,7 +367,7 @@ if question:
             try:
                 if mode == "Agent (RAG + tools)":
                     agent_result = run_agent(
-                        question, thread_id=st.session_state.agent_thread_id
+                        question, thread_id=st.session_state.thread_id
                     )
                     st.write(agent_result["answer"])
 
@@ -367,20 +386,11 @@ if question:
                     else:
                         st.caption("No tool was needed for this question.")
 
-                    render_trace(agent_result.get("execution_trace"))
-
-                    if agent_result.get("error"):
-                        st.caption(
-                            f"⚠️ A tool had trouble on this turn: {agent_result['error']}"
-                        )
-
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
                             "content": agent_result["answer"],
                             "tools_used": agent_result["tools_used"],
-                            "execution_trace": agent_result.get("execution_trace"),
-                            "error": agent_result.get("error"),
                         }
                     )
                 else:

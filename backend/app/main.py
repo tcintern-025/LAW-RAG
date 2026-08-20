@@ -1,12 +1,22 @@
+import uuid
 from collections import Counter
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.schemas import AskRequest, AskResponse, HealthResponse, SourceDocument, AgentAskRequest, AgentAskResponse
+from app.schemas import (
+    AskRequest,
+    AskResponse,
+    HealthResponse,
+    SourceDocument,
+    AgentAskRequest,
+    AgentAskResponse,
+    ResetConversationRequest,
+    ResetConversationResponse,
+)
 from app.rag.chain import answer_question
-from app.agent.graph import run_agent
+from app.agent.graph import run_agent, reset_conversation
 from app.retrieval.vectorstore import get_vectorstore, collection_is_empty
 
 app = FastAPI(
@@ -69,16 +79,31 @@ def ask(request: AskRequest) -> AskResponse:
 
 @app.post("/agent/ask", response_model=AgentAskResponse)
 def agent_ask(request: AgentAskRequest) -> AgentAskResponse:
-    """Tool-calling, multi-step agent endpoint (LangGraph StateGraph). Unlike
-    /ask, this doesn't always search the documents — it decides whether a
-    tool is needed at all (legal search, calculator, or date), can chain
-    multiple tools in sequence within one turn, and remembers prior turns
-    of the same conversation when the caller passes back `thread_id` from
-    a previous response.
+    """Tool-calling agent endpoint. Unlike /ask, this doesn't always search
+    the documents — it decides whether a tool is needed at all (legal
+    search, calculator, or date), calls it if so, and returns the final
+    answer along with which tool(s) it used.
+
+    Conversation memory: pass the `thread_id` you got back from a previous
+    call to continue that conversation (the agent will have the prior
+    turns available when answering). Omit `thread_id` to start a fresh,
+    isolated conversation — one is generated and returned to you.
     """
+    thread_id = request.thread_id or str(uuid.uuid4())
+
     try:
-        result = run_agent(request.question, thread_id=request.thread_id)
+        result = run_agent(request.question, thread_id=thread_id)
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return AgentAskResponse(**result)
+
+
+@app.post("/agent/reset", response_model=ResetConversationResponse)
+def agent_reset(request: ResetConversationRequest) -> ResetConversationResponse:
+    """Clear one conversation's memory. Only the given thread_id is
+    affected — every other conversation (this user's other tabs, or any
+    other user's threads) is untouched.
+    """
+    reset_conversation(request.thread_id)
+    return ResetConversationResponse(thread_id=request.thread_id, status="cleared")

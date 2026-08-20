@@ -32,16 +32,13 @@ class AgentAskRequest(BaseModel):
     question: str = Field(
         ..., min_length=3, max_length=2000, description="The user's question."
     )
-    # Optional. When provided, the agent's LangGraph checkpointer continues
-    # that conversation's message history (so "explain that in simple
-    # words" resolves against a prior turn). Omit it for a stateless,
-    # one-off question — a fresh thread_id is generated server-side.
     thread_id: str | None = Field(
-        default=None,
+        None,
         description=(
-            "Conversation/session id. Reuse the same value across calls to "
-            "give the agent memory of earlier turns in this conversation. "
-            "Omit for a one-off, history-free question."
+            "Conversation to continue. Omit this on the first message of a "
+            "new conversation — the server generates one and returns it in "
+            "the response; send that same value back on every follow-up to "
+            "keep the agent's memory of this conversation."
         ),
     )
 
@@ -49,14 +46,20 @@ class AgentAskRequest(BaseModel):
 class AgentAskResponse(BaseModel):
     answer: str
     tools_used: list[str]
-    # Ordered, human-readable path through the graph for this turn, e.g.
-    # ["AGENT", "search_legal_documents", "AGENT", "calculate", "AGENT"].
-    execution_trace: list[str]
-    # The thread_id this turn was recorded under — echoed back so the
-    # caller can pass it on the next request to continue the conversation.
+    thread_id: str = Field(
+        ..., description="Echo this back on the next request to continue this conversation."
+    )
+
+
+class ResetConversationRequest(BaseModel):
+    thread_id: str = Field(
+        ..., description="The conversation to clear. Only this thread's history is affected."
+    )
+
+
+class ResetConversationResponse(BaseModel):
     thread_id: str
-    # Most recent tool failure this turn, if any (None on a clean run).
-    error: str | None = None
+    status: str
 
 
 class SourceDocument(BaseModel):
